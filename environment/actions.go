@@ -10,4 +10,5 @@ func Switch(installName string) error {
 // in the passed go version, if it exists its a noop and
 // returns an error.
 func Create(installName, goVersion string) error {
+	return nil
 }

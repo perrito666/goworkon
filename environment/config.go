@@ -3,7 +3,6 @@ package environment
 import (
 	"encoding/json"
 	"os"
-	"os/path"
 	"path/filepath"
 
 	"github.com/pkg/errors"
@@ -23,8 +22,8 @@ type Config struct {
 
 func maybeEnsureFolderExists(folder string) error {
 	fInfo, err := os.Stat(folder)
-	if os.IsNotExists(err) {
-		err = path.MkDirAll(folder, 0600)
+	if os.IsNotExist(err) {
+		err = os.MkdirAll(folder, 0600)
 		if err != nil {
 			return errors.Wrapf(err, "creating %q", folder)
 		}
@@ -34,7 +33,7 @@ func maybeEnsureFolderExists(folder string) error {
 		return errors.Wrapf(err, "obtaining stat on %q", folder)
 	}
 	if !fInfo.IsDir() {
-		return errors.New("%q exists and it's not a folder", folder)
+		return errors.Errorf("%q exists and it's not a folder", folder)
 	}
 	return nil
 }

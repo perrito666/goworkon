@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
 
 	"github.com/perrito666/goworkon/environment"
 	"github.com/perrito666/goworkon/goinstalls"
@@ -32,9 +33,14 @@ var (
 )
 
 func init() {
+
+	flag.StringVar(&goVersion, "go-version", currentGoVersion, "the go version to be used (if none specified, all be updated)")
+	flag.BoolVar(&updateRepos, "update-envs", false, "update all envs that use this major go version")
+
+	flag.Parse()
 	if flag.NArg() == 0 {
 		fmt.Println("no command specified")
-		sys.Exit(1)
+		os.Exit(1)
 	}
 	args := flag.Args()
 	command = flag.Arg(0)
@@ -43,44 +49,47 @@ func init() {
 		if flag.NArg() != 2 {
 			fmt.Println("unexpected number of arguments %d", flag.NArg())
 			fmt.Println("the expected format is: goworkon switch <envname>")
-			sys.Exit(1)
+			os.Exit(1)
 		}
 		switchTo = flag.Arg(1)
 	case COMMANDCREATE:
 		if flag.NArg() != 2 {
 			fmt.Println("unexpected number of arguments %d", flag.NArg())
 			fmt.Println("the expected format is: goworkon create <envname>")
-			sys.Exit(1)
+			os.Exit(1)
 		}
-		flag.StringVar(&goVersion, "go-version", currentGoVersion, "the go version to be used (if none specified, all be updated)")
+
 		create = flag.Arg(1)
 	case COMMANDUPDATE:
 		if flag.NArg() != 0 {
 			fmt.Println("unexpected number of arguments %d", flag.NArg())
 			fmt.Println("the expected format is: goworkon update")
-			sys.Exit(1)
+			os.Exit(1)
 		}
-		flag.StringVar(&goVersion, "go-version", currentGoVersion, "the go version to be used (if none specified, all be updated)")
-		flag.BoolVar(&updateRepos, "update-envs", false, "update all envs that use this major go version")
 	default:
 		fmt.Println("command %q is not supported", args[0])
-		sys.Exit(1)
+		os.Exit(1)
 	}
-	flag.Parse()
+
 }
 
 func main() {
+	a, b := goinstalls.OnlineAvailableVersions()
+	fmt.Println(a)
+	fmt.Println(b)
+	os.Exit(0)
 	dataDir, err := xdgDataConfig()
 	if err != nil {
 		fmt.Println(err)
-		sys.Exit(1)
+		os.Exit(1)
 	}
 
 	configs, err := environment.LoadConfig(dataDir)
 	if err != nil {
 		fmt.Println(err)
-		sys.Exit(1)
+		os.Exit(1)
 	}
+	fmt.Println(configs)
 	switch command {
 	case COMMANDSWITCH:
 		environment.Switch(switchTo)

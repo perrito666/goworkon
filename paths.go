@@ -28,5 +28,5 @@ func xdgDataConfig() (string, error) {
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
-	return filepath.Join(xdgDataDir, "configs")
+	return filepath.Join(xdgDataDir, "configs"), nil
 }
