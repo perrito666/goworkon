@@ -30,3 +30,11 @@ func xdgDataConfig() (string, error) {
 	}
 	return filepath.Join(xdgDataDir, "configs"), nil
 }
+
+func xdgDataGoInstalls() (string, error) {
+	xdgDataDir, err := xdgData()
+	if err != nil {
+		return "", errors.WithStack(err)
+	}
+	return filepath.Join(xdgDataDir, "installs"), nil
+}

@@ -7,6 +7,7 @@ import (
 
 	"github.com/perrito666/goworkon/environment"
 	"github.com/perrito666/goworkon/goinstalls"
+	"github.com/pkg/errors"
 )
 
 // TODO(perrito666) this should be auto discovered from go repo.
@@ -33,11 +34,12 @@ var (
 )
 
 func init() {
-
 	flag.StringVar(&goVersion, "go-version", currentGoVersion, "the go version to be used (if none specified, all be updated)")
 	flag.BoolVar(&updateRepos, "update-envs", false, "update all envs that use this major go version")
+}
 
-	flag.Parse()
+// TODO return a command object.
+func checkCommand() {
 	if flag.NArg() == 0 {
 		fmt.Println("no command specified")
 		os.Exit(1)
@@ -53,8 +55,9 @@ func init() {
 		}
 		switchTo = flag.Arg(1)
 	case COMMANDCREATE:
+		fmt.Println(flag.NFlag())
 		if flag.NArg() != 2 {
-			fmt.Println("unexpected number of arguments %d", flag.NArg())
+			fmt.Println(fmt.Sprintf("unexpected number of arguments %d %#v", flag.NArg(), args))
 			fmt.Println("the expected format is: goworkon create <envname>")
 			os.Exit(1)
 		}
@@ -67,26 +70,23 @@ func init() {
 			os.Exit(1)
 		}
 	default:
-		fmt.Println("command %q is not supported", args[0])
+		fmt.Println(fmt.Sprintf("command %q is not supported", args[0]))
 		os.Exit(1)
 	}
-
 }
 
 func main() {
-	a, b := goinstalls.OnlineAvailableVersions()
-	fmt.Println(a)
-	fmt.Println(b)
-	os.Exit(0)
+	flag.Parse()
+	checkCommand()
 	dataDir, err := xdgDataConfig()
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println(errors.WithStack(err))
 		os.Exit(1)
 	}
 
 	configs, err := environment.LoadConfig(dataDir)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println(errors.WithStack(err))
 		os.Exit(1)
 	}
 	fmt.Println(configs)
@@ -94,7 +94,17 @@ func main() {
 	case COMMANDSWITCH:
 		environment.Switch(switchTo)
 	case COMMANDCREATE:
-		environment.Create(create, goVersion)
+		installFolder, err := xdgDataGoInstalls()
+		if err != nil {
+			fmt.Println(errors.WithStack(err))
+			os.Exit(1)
+		}
+		err = environment.Create(create, goVersion, installFolder)
+		if err != nil {
+			fmt.Println(errors.WithStack(err))
+			os.Exit(1)
+		}
+
 	case COMMANDUPDATE:
 		goinstalls.Update(goVersion, updateRepos)
 	}

@@ -1,11 +1,15 @@
 package goinstalls
 
 import (
+	"archive/tar"
 	"bytes"
+	"compress/gzip"
 	"encoding/xml"
+	"fmt"
 	"io"
 	"net/http"
-	"strconv"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -13,79 +17,27 @@ import (
 
 // GODLURL is the url from which golang src tars can be dowloaded.
 const GODLURL = "https://storage.googleapis.com/golang/"
-
-// Version represents a go version, since its intended for
-// the source of released versions, no suffix/build is supported.
-// TODO (perrito666) accept build/rc and figure how to determine
-// newer.
-type Version struct {
-	// Major is the first tier of a version number.
-	Major int
-	// Minor is the second tier of a version number.
-	Minor int
-	// Patch is the final tier of a version number.
-	Patch int
-}
-
-type downloadable struct {
-	Key            string `xml:"Key"`
-	Generation     string `xml:"Generation"`
-	MetaGeneration int64  `xml:"MetaGeneration"`
-	LastModified   string `xml:"LastModified"`
-	ETag           string `xml:"ETag"`
-	Size           int64  `xml:"Size"`
-	Owner          string `xml:"Owner"`
-}
-
-type golangDownloadsPageContents struct {
-	Name     string         `xml:"Name"`
-	Contents []downloadable `xml:"Contents"`
-}
-
-type golangDownloadsPage struct {
-	ListBucketResult golangDownloadsPageContents `xml:"ListBucketResult"`
-}
-
-func versionFromString(versionStr string) (Version, error) {
-	versionParts := strings.Split(versionStr, ".")
-
-	if len(versionParts) < 2 || len(versionParts) > 3 {
-		return Version{}, errors.Errorf("%q is not a valid version string", versionStr)
-	}
-
-	major, err := strconv.Atoi(versionParts[0])
-	if err != nil {
-		return Version{}, errors.Wrapf(err, "%q is an invalid major", versionParts[0])
-	}
-	minor, err := strconv.Atoi(versionParts[1])
-	if err != nil {
-		// This is an rc/beta most likely.
-		return Version{}, errors.Wrapf(err, "%q is an invalid minor", versionParts[1])
-	}
-
-	if len(versionParts) == 2 {
-		return Version{
-			Major: major,
-			Minor: minor,
-			Patch: 0,
-		}, nil
-	}
-
-	if len(versionParts) == 3 {
-		patch, err := strconv.Atoi(versionParts[2])
-		if err != nil {
-			return Version{}, errors.Wrapf(err, "%q is an invalid patch", versionParts[2])
-		}
-		return Version{
-			Major: major,
-			Minor: minor,
-			Patch: patch,
-		}, nil
-	}
-	return Version{}, errors.Errorf("could not parse version string %q", versionStr)
-}
-
 const srcPrefix = ".src.tar.gz"
+
+func filterNewer(vers map[Version]string) map[Version]string {
+	unique := map[string]Version{}
+	for k := range vers {
+		s := k.CommonVersionString()
+		v, ok := unique[s]
+		if !ok {
+			unique[s] = k
+			continue
+		}
+		if k.IsNewerThan(v) {
+			unique[s] = k
+		}
+	}
+	result := make(map[Version]string, len(unique))
+	for _, v := range unique {
+		result[v] = vers[v]
+	}
+	return result
+}
 
 // OnlineAvailableVersions returns a map of all found versions grouped
 // by Minor number and with the latest patch of said Minor as value.
@@ -116,8 +68,71 @@ func OnlineAvailableVersions() (map[Version]string, error) {
 			versions[v] = dl.Key
 		}
 	}
-	// TODO (perrito666) Return only the newest of each minor.
-	return versions, nil
+	return filterNewer(versions), nil
+}
+
+// InstalledAvailableVersions returns a slice of the Versions that
+// have a current install locally.
+func InstalledAvailableVersions() []Version {
+	return []Version{}
+}
+
+func untar(tarFile *tar.Reader, targetPath string) error {
+	for {
+		h, err := tarFile.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return errors.Wrap(err, "uncompressing headers")
+		}
+		p := filepath.Join(targetPath, h.Name)
+		fmt.Println(p)
+		i := h.FileInfo()
+		if i.IsDir() {
+			err := os.MkdirAll(p, i.Mode())
+			if err != nil {
+				return errors.Wrapf(err, "creating folder %q", p)
+			}
+			continue
+		}
+		err = func() error {
+			fp, err := os.OpenFile(p, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, i.Mode())
+			if err != nil {
+				return errors.Wrapf(err, "extracting file %q", h.Name)
+			}
+			defer fp.Close()
+			_, err = io.Copy(fp, tarFile)
+			if err != nil {
+				return errors.Wrapf(err, "writing file %q", h.Name)
+			}
+			return nil
+		}()
+		if err != nil {
+			return errors.Wrap(err, "running extract")
+		}
+	}
+	return nil
+}
+
+// InstallVersion downloads, extracts and installs the given go version.
+func InstallVersion(v Version, src, targetPath string) error {
+	response, err := http.Get(GODLURL + src)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	defer response.Body.Close()
+	fmt.Println(GODLURL + "/" + src)
+	gzFile, err := gzip.NewReader(response.Body)
+	if err != nil {
+		return errors.Wrap(err, "gunzipping file")
+	}
+	tarFile := tar.NewReader(gzFile)
+	targetPath = filepath.Join(targetPath, v.String())
+	if err := untar(tarFile, targetPath); err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
 }
 
 // Update gets goVersion to the lates version of the
