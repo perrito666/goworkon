@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/perrito666/goworkon/environment"
-	"github.com/perrito666/goworkon/goinstalls"
 	"github.com/pkg/errors"
 )
 
@@ -23,89 +22,70 @@ const (
 )
 
 var (
-	// args
-	command  string
-	switchTo string
-	create   string
-
 	// flags
-	goVersion   string
-	updateRepos bool
+	goVersion string
 )
 
 func init() {
 	flag.StringVar(&goVersion, "go-version", currentGoVersion, "the go version to be used (if none specified, all be updated)")
-	flag.BoolVar(&updateRepos, "update-envs", false, "update all envs that use this major go version")
 }
 
-// TODO return a command object.
-func checkCommand() {
+func checkCommand() (Command, error) {
 	if flag.NArg() == 0 {
-		fmt.Println("no command specified")
-		os.Exit(1)
+		return nil, errors.New("no command specified")
 	}
-	args := flag.Args()
-	command = flag.Arg(0)
+	if goVersion == "" {
+		goVersion = currentGoVersion
+	}
+
 	switch flag.Arg(0) {
 	case COMMANDSWITCH:
-		if flag.NArg() != 2 {
-			fmt.Println("unexpected number of arguments %d", flag.NArg())
-			fmt.Println("the expected format is: goworkon switch <envname>")
-			os.Exit(1)
-		}
-		switchTo = flag.Arg(1)
+		return Switch{
+			environmentName: flag.Arg(1),
+		}, nil
 	case COMMANDCREATE:
-		fmt.Println(flag.NFlag())
-		if flag.NArg() != 2 {
-			fmt.Println(fmt.Sprintf("unexpected number of arguments %d %#v", flag.NArg(), args))
-			fmt.Println("the expected format is: goworkon create <envname>")
-			os.Exit(1)
-		}
-
-		create = flag.Arg(1)
+		return Create{
+			environmentName: flag.Arg(1),
+			goVersion:       goVersion,
+		}, nil
 	case COMMANDUPDATE:
-		if flag.NArg() != 0 {
-			fmt.Println("unexpected number of arguments %d", flag.NArg())
-			fmt.Println("the expected format is: goworkon update")
-			os.Exit(1)
-		}
-	default:
-		fmt.Println(fmt.Sprintf("command %q is not supported", args[0]))
-		os.Exit(1)
+		return Update{
+			environmentName: flag.Arg(1),
+			goVersion:       goVersion,
+		}, nil
 	}
+	return nil, errors.Errorf("Unknown command %q\n", flag.Arg(0))
 }
 
 func main() {
 	flag.Parse()
-	checkCommand()
+	c, err := checkCommand()
+	if err != nil {
+		fmt.Printf("%+v", err)
+		os.Exit(1)
+	}
+
+	if err = c.Validate(); err != nil {
+		fmt.Printf("%+v\n", err)
+		fmt.Println(c.Usage())
+		os.Exit(1)
+	}
 	dataDir, err := xdgDataConfig()
 	if err != nil {
-		fmt.Println(errors.WithStack(err))
+		// TODO (perrito) make the + on format optional
+		fmt.Printf("%+v", err)
 		os.Exit(1)
 	}
 
-	configs, err := environment.LoadConfig(dataDir)
+	// TODO prompt for config if not present, we need compile GOROOT
+	_, err = environment.LoadConfig(dataDir)
 	if err != nil {
-		fmt.Println(errors.WithStack(err))
+		fmt.Printf("%+v", err)
 		os.Exit(1)
 	}
-	fmt.Println(configs)
-	switch command {
-	case COMMANDSWITCH:
-		environment.Switch(switchTo)
-	case COMMANDCREATE:
-		installFolder, err := xdgDataGoInstalls()
-		if err != nil {
-			fmt.Println(errors.WithStack(err))
-			os.Exit(1)
-		}
-		err = environment.Create(create, goVersion, installFolder)
-		if err != nil {
-			fmt.Println(errors.WithStack(err))
-			os.Exit(1)
-		}
-
-	case COMMANDUPDATE:
-		goinstalls.Update(goVersion, updateRepos)
+	err = c.Run()
+	if err != nil {
+		fmt.Printf("%+v", err)
+		os.Exit(1)
 	}
 }

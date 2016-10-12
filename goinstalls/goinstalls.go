@@ -61,7 +61,7 @@ func OnlineAvailableVersions() (map[Version]string, error) {
 	for _, dl := range downloadables.Contents {
 		if strings.HasSuffix(dl.Key, "src.tar.gz") {
 			versionString := dl.Key[2 : len(dl.Key)-len(srcPrefix)]
-			v, err := versionFromString(versionString)
+			v, err := VersionFromString(versionString)
 			if err != nil {
 				continue
 			}
