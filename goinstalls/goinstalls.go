@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -116,23 +117,45 @@ func untar(tarFile *tar.Reader, targetPath string) error {
 }
 
 // InstallVersion downloads, extracts and installs the given go version.
-func InstallVersion(v Version, src, targetPath string) error {
+func InstallVersion(v Version, src, targetPath, goroot string) error {
+
 	response, err := http.Get(GODLURL + src)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	defer response.Body.Close()
-	fmt.Println(GODLURL + "/" + src)
 	gzFile, err := gzip.NewReader(response.Body)
 	if err != nil {
 		return errors.Wrap(err, "gunzipping file")
 	}
 	tarFile := tar.NewReader(gzFile)
+
 	targetPath = filepath.Join(targetPath, v.String())
+
 	if err := untar(tarFile, targetPath); err != nil {
 		return errors.WithStack(err)
 	}
-	return nil
+
+	os.Setenv("GOROOT_BOOTSTRAP", goroot)
+	defer os.Unsetenv("GOROOT_BOOTSTRAP")
+	cwd, err := os.Getwd()
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	defer os.Chdir(cwd)
+	err = os.Chdir(filepath.Join(targetPath, "go", "src"))
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	cwd, err = os.Getwd()
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	cmd := exec.Command("./all.bash")
+	out, err := cmd.CombinedOutput()
+	fmt.Println(string(out))
+	return errors.WithStack(err)
 }
 
 // Update gets goVersion to the lates version of the

@@ -1,10 +1,11 @@
 package main
 
 import (
-	"flag"
+	"bufio"
 	"fmt"
 	"os"
 
+	flag "github.com/ogier/pflag"
 	"github.com/perrito666/goworkon/environment"
 	"github.com/pkg/errors"
 )
@@ -30,7 +31,7 @@ func init() {
 	flag.StringVar(&goVersion, "go-version", currentGoVersion, "the go version to be used (if none specified, all be updated)")
 }
 
-func checkCommand() (Command, error) {
+func checkCommand(s environment.Settings) (Command, error) {
 	if flag.NArg() == 0 {
 		return nil, errors.New("no command specified")
 	}
@@ -47,6 +48,7 @@ func checkCommand() (Command, error) {
 		return Create{
 			environmentName: flag.Arg(1),
 			goVersion:       goVersion,
+			settings:        s,
 		}, nil
 	case COMMANDUPDATE:
 		return Update{
@@ -57,35 +59,56 @@ func checkCommand() (Command, error) {
 	return nil, errors.Errorf("Unknown command %q\n", flag.Arg(0))
 }
 
-func main() {
-	flag.Parse()
-	c, err := checkCommand()
+func promptData(query string) (string, error) {
+	stdin := bufio.NewReader(os.Stdin)
+	fmt.Print(query)
+	answer, err := stdin.ReadString('\n')
 	if err != nil {
-		fmt.Printf("%+v", err)
-		os.Exit(1)
+		return "", errors.WithStack(err)
 	}
+	return answer, nil
+}
 
-	if err = c.Validate(); err != nil {
-		fmt.Printf("%+v\n", err)
-		fmt.Println(c.Usage())
-		os.Exit(1)
-	}
-	dataDir, err := xdgDataConfig()
-	if err != nil {
+func main() {
+	var err error
+	fail := func() {
 		// TODO (perrito) make the + on format optional
 		fmt.Printf("%+v", err)
 		os.Exit(1)
 	}
 
-	// TODO prompt for config if not present, we need compile GOROOT
-	_, err = environment.LoadConfig(dataDir)
+	flag.Parse()
+
+	dataDir, err := xdgData()
 	if err != nil {
-		fmt.Printf("%+v", err)
+		fail()
+	}
+
+	settings, err := environment.LoadSettings(dataDir)
+	if err != nil {
+		fail()
+	}
+	if settings.Goroot == "" {
+		settings.Goroot, err = promptData("Please provide a valid GOROOT path: ")
+		if err != nil {
+			fail()
+		}
+		settings.Save(dataDir)
+	}
+
+	c, err := checkCommand(settings)
+	if err != nil {
+		fail()
+	}
+
+	if err = c.Validate(); err != nil {
+		fmt.Printf("%v\n", err)
+		fmt.Println(c.Usage())
 		os.Exit(1)
 	}
+
 	err = c.Run()
 	if err != nil {
-		fmt.Printf("%+v", err)
-		os.Exit(1)
+		fail()
 	}
 }

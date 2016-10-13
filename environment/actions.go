@@ -14,7 +14,7 @@ func Switch(installName string) error {
 	return nil
 }
 
-func ensureVersionInstalled(goVersion, basePath string) error {
+func ensureVersionInstalled(goVersion, basePath, goroot string) error {
 	goFolder := filepath.Join(basePath, goVersion)
 	if _, err := os.Stat(goFolder); err == nil {
 		return nil
@@ -29,7 +29,7 @@ func ensureVersionInstalled(goVersion, basePath string) error {
 			if _, err := os.Stat(goFolder); err == nil {
 				return nil
 			}
-			err = goinstalls.InstallVersion(k, v, basePath)
+			err = goinstalls.InstallVersion(k, v, basePath, goroot)
 			return errors.WithStack(err)
 		}
 	}
@@ -40,6 +40,6 @@ func ensureVersionInstalled(goVersion, basePath string) error {
 // Create creates the an environment with the passed name
 // in the passed go version, if it exists its a noop and
 // returns an error.
-func Create(installName, goVersion, basePath string) error {
-	return ensureVersionInstalled(goVersion, basePath)
+func Create(installName, goVersion, basePath string, settings Settings) error {
+	return ensureVersionInstalled(goVersion, basePath, settings.Goroot)
 }

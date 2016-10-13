@@ -2,11 +2,15 @@ package environment
 
 import (
 	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 
 	"github.com/pkg/errors"
 )
+
+const SETTINGSFILE = "settings.json"
 
 // Config holds the information about a given environment.
 type Config struct {
@@ -45,7 +49,7 @@ func (c *Config) Save(baseFolder string) error {
 		return errors.WithStack(err)
 	}
 	fileName := filepath.Join(baseFolder, c.Name)
-	fp, err := os.Open(fileName)
+	fp, err := os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return errors.Wrapf(err, "opening config file %q for writing", fileName)
 	}
@@ -63,5 +67,84 @@ func (c *Config) Save(baseFolder string) error {
 
 // LoadConfig will load Config files in the given location
 func LoadConfig(baseFolder string) ([]Config, error) {
-	return []Config{}, nil
+	files, err := filepath.Glob(filepath.Join(baseFolder, "*.json"))
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	allConfigs := make([]Config, len(files))
+	for i, fileName := range files {
+		err = func() error {
+			var c Config
+			contents, err := ioutil.ReadFile(fileName)
+			if err != nil {
+				return errors.WithStack(err)
+			}
+			if err = json.Unmarshal(contents, &c); err != nil {
+				return errors.WithStack(err)
+			}
+			allConfigs[i] = c
+			return nil
+		}()
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+	}
+	return allConfigs, nil
+}
+
+// Settings holds general settings for goworkon.
+type Settings struct {
+	// Goroot is the path to a working goroot, it is
+	// required by the go compiler.
+	// TODO (perrito666) make this updateable by each new version.
+	Goroot string `json:"goroot"`
+	// Default is the default environment to set, this will behave
+	// a bit differently since its for general use.
+	Default string `json:"default"`
+}
+
+// Save serializes and writes the Settings in a file in the
+// passed folder.
+func (s Settings) Save(baseFolder string) error {
+	if err := maybeEnsureFolderExists(baseFolder); err != nil {
+		return errors.WithStack(err)
+	}
+	fileName := filepath.Join(baseFolder, SETTINGSFILE)
+	fp, err := os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	if err != nil {
+		return errors.Wrapf(err, "opening settings file %q for writing", fileName)
+	}
+	defer fp.Close()
+	marshaled, err := json.Marshal(s)
+	if err != nil {
+		return errors.Wrap(err, "marshaling settings")
+	}
+	_, err = fp.Write(marshaled)
+	if err != nil {
+		return errors.Wrap(err, "writing marshaled settings")
+	}
+	return nil
+}
+
+// LoadSettings will load Settings files in the given location
+func LoadSettings(baseFolder string) (Settings, error) {
+	settingsFile := filepath.Join(baseFolder, SETTINGSFILE)
+	_, err := os.Stat(settingsFile)
+	fmt.Println(settingsFile)
+	if os.IsNotExist(err) {
+		return Settings{}, nil
+	}
+	if err != nil {
+		return Settings{}, errors.Wrap(err, "reading settings")
+	}
+
+	var s Settings
+	contents, err := ioutil.ReadFile(settingsFile)
+	if err != nil {
+		return Settings{}, errors.WithStack(err)
+	}
+	if err := json.Unmarshal(contents, &s); err != nil {
+		return Settings{}, errors.WithStack(err)
+	}
+	return s, nil
 }
