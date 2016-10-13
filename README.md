@@ -1,45 +1,75 @@
 # goworkon
-A humble attempt at getting the functionality of virtualenv gor go.
+A humble attempt at getting the functionality of virtualenv for go.
 
 ## Requirements
 A working GO version >= 1.4
 
+## Rationale
+I often find myself working in different projects during the day, some might use different 
+versions of go and most definitely all are better off having separate GOPATHS.
+
+What I am attempting here is to automate a way to switch between GOPATHS and
+to get new golang versions.
+
 ## Usage
-Creating environments:
+###First run will ask you for a working goroot, so it can compile go versions.
+
+####Creating environments:
 ``
-goworkon create anenv --go-version 1.7 
+goworkon --go-version 1.7 create envname gopathlocation
 ``
 
 This will create:
 
-* A GOPATH for *anenv*
-* A config for *anenv*
-* If there is no 1.7 in $HOME/.local/share/go/ it will be checked out and built.
+* A GOPATH for *envname* 
+* A config for *envname* (in $HOME/.local/share/goworkon/configs/envname.json
+* If there is no 1.7 in $HOME/.local/share/goworkon/install/ it will be checked out and built.
 
-Switching to an environment:
+####Switching to an environment:
 ``
-goworkon switch anenv
+. goactivate envname
 ``
 
-This will:
+This will (most likely only in bash):
 
 * export PATH as $PATH:/this/go/version/bin/:$GOPATH/bin
 * export GOPATH as $HOME/.local/share/goworkon/gopath
+* export PS1 as $PS1(envname)$ (this requires PS1 to be exported)
 
-Config for this environment:
-``
-gowrokon add ./thisfolder github.com/foo/bar
-``
-
-Will set *thisfolder* as *github.com/foo/bar* in the environment
+as an alternative you can
 
 ``
-goworkon remove tighub.com/foo/bar
+goworkon switch envname
 ``
 
-Will undo the previous command.
+and you will see the variables that need to be set printed for you
+to write whatever suits your shell.
 
-Updating a Go version:
+####Un-switching
+``
+. goactivate
+``
+
+will return the environment to its former state.
+
+as an alternative 
+
+``
+goworkon switch
+``
+
+## To be implemented.
+
+####TESTS
+This was an attempt to replace bash scripts I was using for this
+so I sort of just coded it in a couple of sittings so it needs
+extensive tests
+
+####Debug output
+Debug log level should be setable and proper information should be added
+to the logging.
+
+####Updating a Go version:
 
 ``
 goworkon update --go-version 1.7 --update-envs
@@ -47,7 +77,7 @@ goworkon update --go-version 1.7 --update-envs
 
 Will update the go version in use to 1.7.latest and then rebuild envs using 1.7
 
-Setting build steps:
+####Setting build steps:
 
 ``
 goworkon build-steps wathever you please here semicolon separated
@@ -78,17 +108,8 @@ _1: do something
 _2: do something else
 ``
 
-## TODO:
-* Add a base config for the software that will
- * Define a default environment.
-* Write switch, that changes the env variables:
- * PATH: backs it up and sets a new one.
- * GOPATH: sets GOPATH to the right place
-* Write Create, that creates an empty set of configs and GOPATH.
-* Write Update, that updates go versions.
-* Write a set command for environments that allows:
- * set build commands
- * add local folders/repos as go paths ie: ``goworkon add ./thisfolder github.com/foo/bar`` Will set *thisfolder* as *github.com/foo/bar* in the environment.
+####More ideas:
+
 * Write a set command for global that allows to set config such as:
  * set default environment.
 * Write a way to set the default env to be used in .bashrc (or any .shellrc)
