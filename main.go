@@ -4,7 +4,9 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"strings"
 
+	"github.com/juju/loggo"
 	flag "github.com/ogier/pflag"
 	"github.com/perrito666/goworkon/environment"
 	"github.com/pkg/errors"
@@ -27,7 +29,10 @@ var (
 	goVersion string
 )
 
+var logger = loggo.GetLogger("goworkon")
+
 func init() {
+	//loggo.ConfigureLoggers(`<root>=DEBUG`)
 	flag.StringVar(&goVersion, "go-version", currentGoVersion, "the go version to be used (if none specified, all be updated)")
 }
 
@@ -47,6 +52,7 @@ func checkCommand(s environment.Settings) (Command, error) {
 	case COMMANDCREATE:
 		return Create{
 			environmentName: flag.Arg(1),
+			goPath:          flag.Arg(2),
 			goVersion:       goVersion,
 			settings:        s,
 		}, nil
@@ -66,14 +72,14 @@ func promptData(query string) (string, error) {
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
-	return answer, nil
+	return strings.Trim(answer, "/n"), nil
 }
 
 func main() {
 	var err error
 	fail := func() {
 		// TODO (perrito) make the + on format optional
-		fmt.Printf("%+v", err)
+		fmt.Printf("%+v\n", err)
 		os.Exit(1)
 	}
 

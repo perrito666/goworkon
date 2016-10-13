@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/xml"
-	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -13,12 +12,15 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/juju/loggo"
 	"github.com/pkg/errors"
 )
 
 // GODLURL is the url from which golang src tars can be dowloaded.
 const GODLURL = "https://storage.googleapis.com/golang/"
 const srcPrefix = ".src.tar.gz"
+
+var logger = loggo.GetLogger("goworkon.goinstalls")
 
 func filterNewer(vers map[Version]string) map[Version]string {
 	unique := map[string]Version{}
@@ -53,7 +55,6 @@ func OnlineAvailableVersions() (map[Version]string, error) {
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
-	//fmt.Println(rawXML.String())
 	var downloadables golangDownloadsPageContents
 	if err := xml.Unmarshal(rawXML.Bytes(), &downloadables); err != nil {
 		return nil, errors.WithStack(err)
@@ -79,6 +80,7 @@ func InstalledAvailableVersions() []Version {
 }
 
 func untar(tarFile *tar.Reader, targetPath string) error {
+	logger.Debugf("extracting into %q", targetPath)
 	for {
 		h, err := tarFile.Next()
 		if err == io.EOF {
@@ -88,7 +90,7 @@ func untar(tarFile *tar.Reader, targetPath string) error {
 			return errors.Wrap(err, "uncompressing headers")
 		}
 		p := filepath.Join(targetPath, h.Name)
-		fmt.Println(p)
+		logger.Debugf(p)
 		i := h.FileInfo()
 		if i.IsDir() {
 			err := os.MkdirAll(p, i.Mode())
@@ -143,7 +145,8 @@ func InstallVersion(v Version, src, targetPath, goroot string) error {
 		return errors.WithStack(err)
 	}
 	defer os.Chdir(cwd)
-	err = os.Chdir(filepath.Join(targetPath, "go", "src"))
+	srcPath := filepath.Join(targetPath, "go", "src")
+	err = os.Chdir(srcPath)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -152,10 +155,10 @@ func InstallVersion(v Version, src, targetPath, goroot string) error {
 		return errors.WithStack(err)
 	}
 
-	cmd := exec.Command("./all.bash")
-	out, err := cmd.CombinedOutput()
-	fmt.Println(string(out))
-	return errors.WithStack(err)
+	cmd := exec.Command(filepath.Join(srcPath, "all.bash"))
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return errors.WithStack(cmd.Run())
 }
 
 // Update gets goVersion to the lates version of the
