@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
-GOWORKONEVVARS=$(goworkon switch $@)
-if [ $? -eq 0 ]; then
-  while read -r oneenvvar; do
-     eval "export $oneenvvar"
-  done <<< "$GOWORKONEVVARS"
-else
-  echo "cant switch to $@"
-fi
-
+# source this file in your ~/.bashrc 
+goactivate () {
+  GOWORKONEVVARS=$(goworkon switch $@)
+  if [ $? -eq 0 ]; then
+    while read -r oneenvvar; do
+       eval "export $oneenvvar"
+    done <<< "$GOWORKONEVVARS"
+  else
+    echo "cant switch to $@"
+  fi
+}

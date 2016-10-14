@@ -59,7 +59,7 @@ func Switch(basePath string, cfg environment.Config) error {
 		path}, ":")
 	envVars = append(envVars, setenv(PATH, newPath))
 
-	envVars = append(envVars, setenv(PS1, fmt.Sprintf("\"%s(%s)$\"", ps1, cfg.Name)))
+	envVars = append(envVars, setenv(PS1, fmt.Sprintf("\"%s(%s)$ \"", ps1, cfg.Name)))
 	fmt.Println(strings.Join(envVars, "\n"))
 	return nil
 }
@@ -73,7 +73,7 @@ func Reset() error {
 	}
 	pgopath := os.Getenv(PREVGOPATH)
 	ppath := os.Getenv(PREVPATH)
-	envVars = append(envVars, setenv(PREVGOPATH, pgopath))
+	envVars = append(envVars, setenv(GOPATH, pgopath))
 
 	if ppath != "" {
 		envVars = append(envVars, setenv(PATH, ppath))
