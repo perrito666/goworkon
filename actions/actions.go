@@ -3,6 +3,7 @@ package actions
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/perrito666/goworkon/environment"
 	"github.com/perrito666/goworkon/goinstalls"
@@ -79,4 +80,34 @@ func Create(installName, goVersion, basePath, goPath string, settings environmen
 		return errors.WithStack(err)
 	}
 	return nil
+}
+
+func extractEnvironment(attribute string) (string, string, error) {
+	parts := strings.Split(attribute, "@")
+	l := len(parts)
+	if l == 2 {
+		return parts[0], parts[1], nil
+	}
+	if l == 1 {
+		return "", parts[0], nil
+	}
+	return "", "", errors.Errorf("%q is not a valid attribute", attribute)
+}
+
+// Set sets <attribute> to <value> in the correct setting or returns an error.
+func Set(attribute, value, baseFolder string) error {
+	environmentName, attribute, err := extractEnvironment(attribute)
+	if err != nil {
+		return errors.Errorf("setting %q to %q", attribute, value)
+	}
+	if environmentName != "" {
+		return errors.New("setting environment attributes is not implemented")
+	}
+
+	settings, err := environment.LoadSettings(baseFolder)
+	if err != nil {
+		return errors.Wrap(err, "loading settings")
+	}
+
+	return errors.Wrapf(settings.Set(attribute, value, baseFolder), "setting %q to %q", attribute, value)
 }

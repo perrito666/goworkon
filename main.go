@@ -22,6 +22,8 @@ const (
 	COMMANDCREATE = "create"
 	// COMMANDUPDATE is the name of the update-go-version command.
 	COMMANDUPDATE = "update"
+	// COMMANDSET is the name of the set attribute command.
+	COMMANDSET = "set"
 )
 
 var (
@@ -60,6 +62,11 @@ func checkCommand(s environment.Settings) (Command, error) {
 		return Update{
 			environmentName: flag.Arg(1),
 			goVersion:       goVersion,
+		}, nil
+	case COMMANDSET:
+		return Set{
+			attribute: flag.Arg(1),
+			value:     flag.Arg(2),
 		}, nil
 	}
 	return nil, errors.Errorf("Unknown command %q\n", flag.Arg(0))

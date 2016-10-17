@@ -58,6 +58,14 @@ as an alternative
 goworkon switch
 ``
 
+####Setting global settings
+``
+goworkon set <attribute> [value]
+``
+
+will set ``<attribute>`` settings value if its a valid one (you will get an error otherwise)
+if value is not passed the attribute will be blanked.
+
 ## To be implemented.
 
 ####TESTS
