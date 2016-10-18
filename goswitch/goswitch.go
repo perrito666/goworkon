@@ -30,7 +30,7 @@ func setenv(varName, varValue string) string {
 
 // Switch will set the proper environment variables to set an environment
 // as the current running one.
-func Switch(basePath string, cfg environment.Config) error {
+func Switch(basePath string, cfg environment.Config, isDefault bool, extraBin []string) error {
 	pgopath := os.Getenv(PREVGOPATH)
 	ppath := os.Getenv(PREVPATH)
 	pps1 := os.Getenv(PREVPS1)
@@ -50,7 +50,12 @@ func Switch(basePath string, cfg environment.Config) error {
 	}
 	// TODO(perrito) go throught the environment and remove the path section
 	// that holds the current go install.
+	// Also threat default as a special cookie and make it leave no trace.
 	envVars = append(envVars, setenv(GOPATH, cfg.GoPath))
+	if len(extraBin) > 0 {
+		extraBin = append(extraBin, path)
+		path = strings.Join(extraBin, ":")
+	}
 	newPath := strings.Join([]string{filepath.Join(cfg.GoPath, "bin"),
 		// TODO(perrito) this implies heavy out of band knowledge, lets
 		// store these things somewhere instead or build a unique source
@@ -58,8 +63,10 @@ func Switch(basePath string, cfg environment.Config) error {
 		filepath.Join(basePath, cfg.GoVersion, "go", "bin"),
 		path}, ":")
 	envVars = append(envVars, setenv(PATH, newPath))
-
-	envVars = append(envVars, setenv(PS1, fmt.Sprintf("\"%s(%s)$ \"", ps1, cfg.Name)))
+	// Default env will
+	if !isDefault {
+		envVars = append(envVars, setenv(PS1, fmt.Sprintf("\"%s(%s)$ \"", ps1, cfg.Name)))
+	}
 	fmt.Println(strings.Join(envVars, "\n"))
 	return nil
 }

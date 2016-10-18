@@ -11,6 +11,18 @@ import (
 	"github.com/pkg/errors"
 )
 
+func configGet(basePath, name string) (environment.Config, error) {
+	cfgs, err := environment.LoadConfig(basePath)
+	if err != nil {
+		return environment.Config{}, errors.WithStack(err)
+	}
+	env, ok := cfgs[name]
+	if !ok {
+		return environment.Config{}, errors.Errorf("environment %q not found", name)
+	}
+	return env, nil
+}
+
 // Switch changes the environment to the specified one
 // if it exists, otherwise its a noop and returns error.
 func Switch(basePath, installName string) error {
@@ -18,11 +30,23 @@ func Switch(basePath, installName string) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	env, ok := cfgs[installName]
-	if !ok {
-		return errors.Errorf("environment %q not found", installName)
+	env, err := configGet(basePath, installName)
+	if err != nil {
+		return errors.WithStack(err)
 	}
-	goswitch.Switch(basePath, env)
+
+	settings, err := environment.LoadSettings(basePath)
+	if err != nil {
+		return errors.Wrap(err, "loading settings")
+	}
+
+	extraBins := []string{}
+	for _, cfg := range cfgs {
+		if cfg.GlobalBin {
+			extraBins = append(extraBins, filepath.Join(cfg.GoPath, "bin"))
+		}
+	}
+	goswitch.Switch(basePath, env, installName == settings.Default, extraBins)
 
 	return nil
 }
@@ -101,6 +125,12 @@ func Set(attribute, value, baseFolder string) error {
 		return errors.Errorf("setting %q to %q", attribute, value)
 	}
 	if environmentName != "" {
+		cfg, err := configGet(baseFolder, environmentName)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		return errors.Wrapf(cfg.Set(attribute, value, baseFolder), "stting %q to %q", attribute, value)
+
 		return errors.New("setting environment attributes is not implemented")
 	}
 

@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/juju/loggo"
 	"github.com/pkg/errors"
@@ -101,4 +102,22 @@ func LoadConfig(baseFolder string) (map[string]Config, error) {
 		}
 	}
 	return allConfigs, nil
+}
+
+// Set will set the value of <attribute> to <value> if attribute is a valid
+// member of Config.
+func (c Config) Set(attribute, value, baseFolder string) error {
+	switch strings.ToLower(attribute) {
+	case "globalbin":
+		if strings.ToLower(value) == "true" {
+			c.GlobalBin = true
+		} else {
+			c.GlobalBin = false
+		}
+	case "compilesteps":
+		c.CompileSteps = strings.Split(value, ";")
+	default:
+		return errors.Errorf("%q is not a valid setting", attribute)
+	}
+	return errors.WithStack(c.Save(baseFolder))
 }
