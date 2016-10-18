@@ -38,14 +38,14 @@ func Switch(basePath string, cfg environment.Config, isDefault bool, extraBin []
 	path := os.Getenv(PATH)
 	ps1 := os.Getenv(PS1)
 	envVars := []string{}
-	if pgopath == "" {
+	if pgopath == "" && !isDefault {
 		envVars = append(envVars, setenv(PREVGOPATH, gopath))
 	}
 	envVars = append(envVars, setenv(GOPATH, cfg.GoPath))
-	if ppath == "" {
+	if ppath == "" && !isDefault {
 		envVars = append(envVars, setenv(PREVPATH, path))
 	}
-	if pps1 == "" {
+	if pps1 == "" && !isDefault {
 		envVars = append(envVars, setenv(PREVPS1, fmt.Sprintf("\"%s\"", ps1)))
 	}
 	// TODO(perrito) go throught the environment and remove the path section
