@@ -47,11 +47,7 @@ func (c Create) Validate() error {
 
 // Run implements Command.
 func (c Create) Run() error {
-	installFolder, err := xdgData()
-	if err != nil {
-		return errors.WithStack(err)
-	}
-	err = actions.Create(c.environmentName, c.goVersion, installFolder, c.goPath, c.settings)
+	err := actions.Create(c.environmentName, c.goVersion, c.goPath, c.settings)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -78,14 +74,10 @@ func (s Switch) Validate() error {
 
 // Run implements Command.
 func (s Switch) Run() error {
-	installFolder, err := xdgData()
-	if err != nil {
-		return errors.WithStack(err)
-	}
 	if s.environmentName == "" {
 		return actions.Reset()
 	}
-	err = actions.Switch(installFolder, s.environmentName)
+	err := actions.Switch(s.environmentName)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -149,10 +141,5 @@ func (s Set) Validate() error {
 
 // Run implements Command.
 func (s Set) Run() error {
-	dataDir, err := xdgData()
-	if err != nil {
-		return errors.Wrap(err, "getting xdg data dir for \"Set\" command")
-	}
-
-	return errors.WithStack(actions.Set(s.attribute, s.value, dataDir))
+	return errors.WithStack(actions.Set(s.attribute, s.value))
 }

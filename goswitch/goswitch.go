@@ -3,10 +3,11 @@ package goswitch
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/perrito666/goworkon/environment"
+	"github.com/perrito666/goworkon/paths"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -30,7 +31,7 @@ func setenv(varName, varValue string) string {
 
 // Switch will set the proper environment variables to set an environment
 // as the current running one.
-func Switch(basePath string, cfg environment.Config, isDefault bool, extraBin []string) error {
+func Switch(cfg environment.Config, isDefault bool, extraBin []string) error {
 	pgopath := os.Getenv(PREVGOPATH)
 	ppath := os.Getenv(PREVPATH)
 	pps1 := os.Getenv(PREVPS1)
@@ -41,27 +42,22 @@ func Switch(basePath string, cfg environment.Config, isDefault bool, extraBin []
 	if pgopath == "" && !isDefault {
 		envVars = append(envVars, setenv(PREVGOPATH, gopath))
 	}
-	envVars = append(envVars, setenv(GOPATH, cfg.GoPath))
 	if ppath == "" && !isDefault {
 		envVars = append(envVars, setenv(PREVPATH, path))
 	}
 	if pps1 == "" && !isDefault {
 		envVars = append(envVars, setenv(PREVPS1, fmt.Sprintf("\"%s\"", ps1)))
 	}
-	// TODO(perrito) go throught the environment and remove the path section
-	// that holds the current go install.
-	// Also threat default as a special cookie and make it leave no trace.
 	envVars = append(envVars, setenv(GOPATH, cfg.GoPath))
 	if len(extraBin) > 0 {
 		extraBin = append(extraBin, path)
 		path = strings.Join(extraBin, ":")
 	}
-	newPath := strings.Join([]string{filepath.Join(cfg.GoPath, "bin"),
-		// TODO(perrito) this implies heavy out of band knowledge, lets
-		// store these things somewhere instead or build a unique source
-		// of truth for paths.
-		filepath.Join(basePath,"installs", cfg.GoVersion, "go", "bin"),
-		path}, ":")
+	goInstallsPath, err := paths.XdgDataGoInstallsBinForVerson(cfg.GoVersion)
+	if err != nil {
+		return errors.Wrapf(err, "trying to determine go installs path to switch to %q", cfg.Name)
+	}
+	newPath := paths.PATHInsert(path, paths.GoPathBin(cfg.GoPath), goInstallsPath)
 	envVars = append(envVars, setenv(PATH, newPath))
 	// Default env will
 	if !isDefault {

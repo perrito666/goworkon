@@ -29,6 +29,9 @@ type Config struct {
 	GlobalBin bool `json:"globalbin"`
 	// GoPath
 	GoPath string `json:"gopath"`
+
+	// filePath holds the path for this config file.
+	filePath string
 }
 
 func maybeEnsureFolderExists(folder string) error {
@@ -52,7 +55,6 @@ func maybeEnsureFolderExists(folder string) error {
 // Save serializes and writes the Config in a file in the
 // passed folder.
 func (c *Config) Save(baseFolder string) error {
-	baseFolder = filepath.Join(baseFolder, "configs")
 	if err := maybeEnsureFolderExists(baseFolder); err != nil {
 		return errors.WithStack(err)
 	}
@@ -75,7 +77,6 @@ func (c *Config) Save(baseFolder string) error {
 
 // LoadConfig will load Config files in the given location
 func LoadConfig(baseFolder string) (map[string]Config, error) {
-	baseFolder = filepath.Join(baseFolder, "configs")
 	if err := maybeEnsureFolderExists(baseFolder); err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -94,6 +95,7 @@ func LoadConfig(baseFolder string) (map[string]Config, error) {
 			if err = json.Unmarshal(contents, &c); err != nil {
 				return errors.WithStack(err)
 			}
+			c.filePath = baseFolder
 			allConfigs[c.Name] = c
 			return nil
 		}()
@@ -106,7 +108,11 @@ func LoadConfig(baseFolder string) (map[string]Config, error) {
 
 // Set will set the value of <attribute> to <value> if attribute is a valid
 // member of Config.
-func (c Config) Set(attribute, value, baseFolder string) error {
+func (c Config) Set(attribute, value string) error {
+	if c.filePath == "" {
+		return errors.New("this config neds to be saved before Set can be used.")
+	}
+
 	switch strings.ToLower(attribute) {
 	case "globalbin":
 		if strings.ToLower(value) == "true" {
@@ -119,5 +125,5 @@ func (c Config) Set(attribute, value, baseFolder string) error {
 	default:
 		return errors.Errorf("%q is not a valid setting", attribute)
 	}
-	return errors.WithStack(c.Save(baseFolder))
+	return errors.WithStack(c.Save(c.filePath))
 }

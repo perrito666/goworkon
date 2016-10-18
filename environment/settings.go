@@ -19,6 +19,9 @@ type Settings struct {
 	// Default is the default environment to set, this will behave
 	// a bit differently since its for general use.
 	Default string `json:"default"`
+
+	// filePath holds the path for this settings file.
+	filePath string
 }
 
 // Save serializes and writes the Settings in a file in the
@@ -46,7 +49,11 @@ func (s Settings) Save(baseFolder string) error {
 
 // Set will set the value of <attribute> to <value> if attribute is a valid
 // member of Settings.
-func (s Settings) Set(attribute, value, baseFolder string) error {
+func (s Settings) Set(attribute, value string) error {
+	if s.filePath == "" {
+		return errors.New("these settings neds to be saved before Set can be used")
+	}
+
 	switch strings.ToLower(attribute) {
 	case "goroot":
 		s.Goroot = value
@@ -55,7 +62,7 @@ func (s Settings) Set(attribute, value, baseFolder string) error {
 	default:
 		return errors.Errorf("%q is not a valid setting", attribute)
 	}
-	return errors.WithStack(s.Save(baseFolder))
+	return errors.WithStack(s.Save(s.filePath))
 }
 
 // LoadSettings will load Settings files in the given location
@@ -78,5 +85,6 @@ func LoadSettings(baseFolder string) (Settings, error) {
 	if err := json.Unmarshal(contents, &s); err != nil {
 		return Settings{}, errors.WithStack(err)
 	}
+	s.filePath = baseFolder
 	return s, nil
 }

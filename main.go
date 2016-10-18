@@ -9,6 +9,7 @@ import (
 	"github.com/juju/loggo"
 	flag "github.com/ogier/pflag"
 	"github.com/perrito666/goworkon/environment"
+	"github.com/perrito666/goworkon/paths"
 	"github.com/pkg/errors"
 )
 
@@ -92,7 +93,7 @@ func main() {
 
 	flag.Parse()
 
-	dataDir, err := xdgData()
+	dataDir, err := paths.XdgData()
 	if err != nil {
 		fail()
 	}
