@@ -79,7 +79,7 @@ func promptData(query string) (string, error) {
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
-	return strings.Trim(answer, "/n"), nil
+	return strings.Trim(answer, "\n"), nil
 }
 
 func main() {

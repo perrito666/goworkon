@@ -60,7 +60,7 @@ func Switch(basePath string, cfg environment.Config, isDefault bool, extraBin []
 		// TODO(perrito) this implies heavy out of band knowledge, lets
 		// store these things somewhere instead or build a unique source
 		// of truth for paths.
-		filepath.Join(basePath, cfg.GoVersion, "go", "bin"),
+		filepath.Join(basePath,"installs", cfg.GoVersion, "go", "bin"),
 		path}, ":")
 	envVars = append(envVars, setenv(PATH, newPath))
 	// Default env will
