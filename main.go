@@ -25,6 +25,8 @@ const (
 	COMMANDUPDATE = "update"
 	// COMMANDSET is the name of the set attribute command.
 	COMMANDSET = "set"
+	// COMMANDLIST is the name if the list-environments command.
+	COMMANDLIST = "list"
 )
 
 var (
@@ -36,23 +38,23 @@ var logger = loggo.GetLogger("goworkon")
 
 func init() {
 	//loggo.ConfigureLoggers(`<root>=DEBUG`)
-	flag.StringVar(&goVersion, "go-version", currentGoVersion, "the go version to be used (if none specified, all be updated)")
+	flag.StringVar(&goVersion, "go-version", "", "the go version to be used (if none specified, all be updated)")
 }
 
 func checkCommand(s environment.Settings) (Command, error) {
 	if flag.NArg() == 0 {
 		return nil, errors.New("no command specified")
 	}
-	if goVersion == "" {
-		goVersion = currentGoVersion
-	}
-
 	switch flag.Arg(0) {
 	case COMMANDSWITCH:
 		return Switch{
 			environmentName: flag.Arg(1),
 		}, nil
 	case COMMANDCREATE:
+		if goVersion == "" {
+			goVersion = currentGoVersion
+		}
+
 		return Create{
 			environmentName: flag.Arg(1),
 			goPath:          flag.Arg(2),
@@ -69,7 +71,11 @@ func checkCommand(s environment.Settings) (Command, error) {
 			attribute: flag.Arg(1),
 			value:     flag.Arg(2),
 		}, nil
+
+	case COMMANDLIST:
+		return List{}, nil
 	}
+
 	return nil, errors.Errorf("Unknown command %q\n", flag.Arg(0))
 }
 

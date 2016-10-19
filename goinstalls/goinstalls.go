@@ -73,6 +73,23 @@ func OnlineAvailableVersions() (map[Version]string, error) {
 	return filterNewer(versions), nil
 }
 
+// NewestAvailableOnline returns the newest version available to download.
+func NewestAvailableOnline() (Version, string, error) {
+	newerOnline, err := OnlineAvailableVersions()
+	if err != nil {
+		return Version{}, "", errors.Wrap(err, "finding available online versions")
+	}
+	newest := Version{}
+	newestSrc := ""
+	for v, src := range newerOnline {
+		if v.IsNewerThan(newest) {
+			newest = v
+			newestSrc = src
+		}
+	}
+	return newest, newestSrc, nil
+}
+
 // InstalledAvailableVersions returns a slice of the Versions that
 // have a current install locally.
 func InstalledAvailableVersions() []Version {
@@ -159,9 +176,4 @@ func InstallVersion(v Version, src, targetPath, goroot string) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return errors.WithStack(cmd.Run())
-}
-
-// Update gets goVersion to the lates version of the
-// given major.
-func Update(goVersion string, updateRepos bool) {
 }
