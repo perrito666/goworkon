@@ -58,6 +58,13 @@ as an alternative
 goworkon switch
 ``
 
+###Listing
+``
+goworkon list
+``
+
+Will print a detailed list of environments.
+
 #### Default environment
 
 ``
