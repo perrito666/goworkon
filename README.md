@@ -58,6 +58,17 @@ as an alternative
 goworkon switch
 ``
 
+#### Default environment
+
+``
+goworkong set default <envname>
+. goactivate <envname>
+``
+
+Will set envname as the default environment, this environment will not change
+PS1 variable and can be switched in .bashrc its intended to be used as the general one.
+
+
 ####Setting global settings
 ``
 goworkon set <attribute> [value]
@@ -65,6 +76,40 @@ goworkon set <attribute> [value]
 
 will set ``<attribute>`` settings value if its a valid one (you will get an error otherwise)
 if value is not passed the attribute will be blanked.
+
+####Setting environment settings
+``
+goworkon set envname@<attribute> [value]
+``
+
+will set ``<attribute>`` environment config value if its a valid one (you will get an error otherwise)
+if value is not passed the attribute will be blanked.
+
+Interesting settings:
+
+* ``goworkon set envname@globalbin "true"`` sets a flag in the project that makes its $GOPATH/bin included
+in all envs, very useful for tools that you build but want to keep separate.
+
+
+####Updating a Go version:
+
+``
+goworkon update --go-version 1.7 [envname]
+``
+
+Will update the go version in use to 1.7.latest and then (in next release) rebuild envs using 1.7
+
+``
+goworkon update envname
+``
+
+Will udpate the env to the latest available version of go.
+
+``
+goworkon update --go-version 1.7
+``
+
+Will update all projects using 1.7.x to the latest version of 1.7
 
 ## To be implemented.
 
@@ -77,13 +122,6 @@ extensive tests
 Debug log level should be setable and proper information should be added
 to the logging.
 
-####Updating a Go version:
-
-``
-goworkon update --go-version 1.7 --update-envs
-``
-
-Will update the go version in use to 1.7.latest and then rebuild envs using 1.7
 
 ####Setting build steps:
 
@@ -118,7 +156,4 @@ _2: do something else
 
 ####More ideas:
 
-* Write a set command for global that allows to set config such as:
- * set default environment.
-* Write a way to set the default env to be used in .bashrc (or any .shellrc)
 * Write a rebuild command for the current env
