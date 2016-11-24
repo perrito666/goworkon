@@ -3,6 +3,7 @@ package goswitch
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/perrito666/goworkon/environment"
@@ -17,12 +18,16 @@ const (
 	GOPATH = "GOPATH"
 	// PS1 is the name of the env variable of the same name.
 	PS1 = "PS1"
+	// CDPATH is the name of the env variable of the same name.
+	CDPATH = "CDPATH"
 	// PREVPATH is the name of the variable used to backup PATH.
 	PREVPATH = "GOWORKON_PREVIOUS_PATH"
 	// PREVGOPATH is the name of the variable used to backup GOPATH.
 	PREVGOPATH = "GOWORKON_PREVIOUS_GOPATH"
 	// PREVPS1 is the name of the variable used to backup PS1.
 	PREVPS1 = "GOWORKON_PREVIOUS_PS1"
+	// PREVCDPATH is the name of the variable used to backup CDPATH.
+	PREVCDPATH = "GOWORKON_PREVIOUS_CDPATH"
 )
 
 func setenv(varName, varValue string) string {
@@ -35,10 +40,14 @@ func Switch(cfg environment.Config, isDefault bool, extraBin []string) error {
 	pgopath := os.Getenv(PREVGOPATH)
 	ppath := os.Getenv(PREVPATH)
 	pps1 := os.Getenv(PREVPS1)
+	pcdpath := os.Getenv(PREVCDPATH)
 	gopath := os.Getenv(GOPATH)
 	path := os.Getenv(PATH)
 	ps1 := os.Getenv(PS1)
+	cdpath := os.Getenv(CDPATH)
+
 	envVars := []string{}
+	// backup vanilla paths.
 	if pgopath == "" && !isDefault {
 		envVars = append(envVars, setenv(PREVGOPATH, gopath))
 	}
@@ -48,7 +57,16 @@ func Switch(cfg environment.Config, isDefault bool, extraBin []string) error {
 	if pps1 == "" && !isDefault {
 		envVars = append(envVars, setenv(PREVPS1, fmt.Sprintf("\"%s\"", ps1)))
 	}
+	if pcdpath == "" {
+		envVars = append(envVars, setenv(PREVCDPATH, cdpath))
+	}
+	// set env vars.
 	envVars = append(envVars, setenv(GOPATH, cfg.GoPath))
+	newCdpath := filepath.Join(cfg.GoPath, "src")
+	if cdpath != "" && pcdpath == "" {
+		newCdpath = fmt.Sprintf("%s:%s", cdpath, newCdpath)
+	}
+	envVars = append(envVars, setenv(CDPATH, newCdpath))
 	if len(extraBin) > 0 {
 		extraBin = append(extraBin, path)
 		path = strings.Join(extraBin, ":")
@@ -59,7 +77,10 @@ func Switch(cfg environment.Config, isDefault bool, extraBin []string) error {
 	}
 	newPath := paths.PATHInsert(path, paths.GoPathBin(cfg.GoPath), goInstallsPath)
 	envVars = append(envVars, setenv(PATH, newPath))
-	// Default env will
+	// Default env does not need new ps1
+	if pps1 != "" {
+		ps1 = pps1
+	}
 	if !isDefault {
 		envVars = append(envVars, setenv(PS1, fmt.Sprintf("\"%s(%s)$ \"", ps1, cfg.Name)))
 	}
